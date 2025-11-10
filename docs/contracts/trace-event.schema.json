@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Trace Event",
+  "description": "Execution trace event for reflection and learning",
+  "type": "object",
+  "required": ["run_id", "node", "version", "start", "status"],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Workflow run identifier"
+    },
+    "step_id": {
+      "type": "string",
+      "description": "Step identifier within the workflow"
+    },
+    "node": {
+      "type": "string",
+      "pattern": "^[a-z]+\\.[a-zA-Z]+$",
+      "description": "Node name (e.g., table.sql)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Node version executed"
+    },
+    "start": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Start timestamp (ISO 8601)"
+    },
+    "end": {
+      "type": "string",
+      "format": "date-time",
+      "description": "End timestamp (ISO 8601)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "error", "timeout", "cancelled"],
+      "description": "Execution outcome"
+    },
+    "inputs_hash": {
+      "type": "string",
+      "description": "SHA1 hash of inputs for idempotency/caching"
+    },
+    "latency_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Execution duration in milliseconds"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Custom metrics from node execution",
+      "examples": [
+        {
+          "rows": 12534,
+          "cols": 3,
+          "quality_score": 0.95
+        }
+      ]
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "type": "string",
+          "description": "Error classification (e.g., TypeCast, NetworkTimeout, ValidationError)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message"
+        },
+        "stack": {
+          "type": "string",
+          "description": "Stack trace"
+        },
+        "retryable": {
+          "type": "boolean",
+          "description": "Whether this error can be retried"
+        }
+      },
+      "required": ["class", "message"]
+    },
+    "retry_count": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Number of retries attempted"
+    },
+    "cache_hit": {
+      "type": "boolean",
+      "description": "Whether result came from cache"
+    },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "tokens": {
+          "type": "number",
+          "description": "LLM tokens consumed (if applicable)"
+        },
+        "compute_ms": {
+          "type": "number",
+          "description": "CPU/GPU milliseconds"
+        },
+        "storage_bytes": {
+          "type": "number",
+          "description": "Storage consumed"
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "Additional context for learning (user intent, data characteristics, etc.)",
+      "properties": {
+        "user_intent": {
+          "type": "string"
+        },
+        "data_size": {
+          "type": "number"
+        },
+        "data_type": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "run_id": "550e8400-e29b-41d4-a716-446655440000",
+      "step_id": "run_sql",
+      "node": "table.sql",
+      "version": "2.1.0",
+      "start": "2025-11-09T10:30:00Z",
+      "end": "2025-11-09T10:30:00.842Z",
+      "status": "ok",
+      "inputs_hash": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+      "latency_ms": 842,
+      "metrics": {
+        "rows": 12534,
+        "cols": 3
+      },
+      "retry_count": 0,
+      "cache_hit": false
+    },
+    {
+      "run_id": "550e8400-e29b-41d4-a716-446655440001",
+      "step_id": "parse_dates",
+      "node": "transform.parseDate",
+      "version": "1.0.3",
+      "start": "2025-11-09T10:31:00Z",
+      "end": "2025-11-09T10:31:05Z",
+      "status": "error",
+      "inputs_hash": "b47cc0f104b62d4c6e7e1c0e4e1e7c2e9a4f2b1a",
+      "latency_ms": 5000,
+      "error": {
+        "class": "TypeCast",
+        "message": "Cannot parse date '31.12.2024' - ambiguous format (DD.MM.YYYY or MM.DD.YYYY?)",
+        "retryable": false
+      },
+      "retry_count": 2,
+      "cache_hit": false,
+      "context": {
+        "user_intent": "analyze Q2 sales",
+        "data_type": "excel",
+        "data_size": 1048576
+      }
+    }
+  ]
+}

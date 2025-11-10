@@ -1,0 +1,29 @@
+{
+  "name": "@reflux/migrate",
+  "version": "0.1.0",
+  "description": "n8n to REFLUX workflow migration tool",
+  "main": "dist/index.js",
+  "bin": {
+    "reflux-migrate": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublish": "npm run build"
+  },
+  "keywords": [
+    "reflux",
+    "n8n",
+    "migration",
+    "workflow",
+    "automation"
+  ],
+  "author": "REFLUX Team",
+  "license": "MIT",
+  "dependencies": {
+    "@reflux/core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

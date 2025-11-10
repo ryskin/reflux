@@ -1,0 +1,76 @@
+/**
+ * Test script to execute a simple workflow
+ */
+
+import { WorkflowClient } from './client';
+import { WorkflowSpec } from './types';
+
+const testWorkflow: WorkflowSpec = {
+  name: 'simple_test_flow',
+  version: '1.0.0',
+  description: 'Test workflow: fetch data → transform → deliver',
+  steps: [
+    {
+      id: 'fetch',
+      node: 'http.request',
+      with: {
+        url: '{{input.api_url}}',
+        method: 'GET',
+      },
+    },
+    {
+      id: 'transform',
+      node: 'util.transform',
+      with: {
+        data: '{{steps.fetch.output.data}}',
+        mapping: {
+          result: 'message',
+          source: 'url',
+        },
+      },
+    },
+    {
+      id: 'deliver',
+      node: 'webhook.out',
+      with: {
+        url: '{{input.callback_url}}',
+        method: 'POST',
+        body: '{{steps.transform.output.result}}',
+      },
+    },
+  ],
+};
+
+async function main() {
+  console.log('🚀 Testing REFLUX workflow execution\n');
+
+  try {
+    // Create client
+    const client = await WorkflowClient.create();
+    console.log('✅ Client connected\n');
+
+    // Execute workflow
+    console.log('📝 Workflow spec:');
+    console.log(JSON.stringify(testWorkflow, null, 2));
+    console.log('\n📥 Inputs:');
+
+    const inputs = {
+      api_url: 'https://api.example.com/data',
+      callback_url: 'https://webhook.site/test',
+    };
+    console.log(JSON.stringify(inputs, null, 2));
+
+    console.log('\n⏳ Executing workflow...\n');
+
+    const result = await client.executeWorkflow(testWorkflow, inputs);
+
+    console.log('\n✅ Workflow completed!');
+    console.log('\n📤 Outputs:');
+    console.log(JSON.stringify(result, null, 2));
+  } catch (error) {
+    console.error('\n❌ Workflow failed:', error);
+    process.exit(1);
+  }
+}
+
+main();

@@ -1,0 +1,144 @@
+services:
+  # Temporal server with PostgreSQL backend
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: reflux-temporal
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=reflux
+      - POSTGRES_PWD=reflux
+      - POSTGRES_SEEDS=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - reflux
+
+  # Temporal UI for debugging workflows
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: reflux-temporal-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    depends_on:
+      - temporal
+    networks:
+      - reflux
+
+  # PostgreSQL - main database for catalog
+  postgres:
+    image: postgres:16-alpine
+    container_name: reflux-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: reflux
+      POSTGRES_PASSWORD: reflux
+      POSTGRES_DB: reflux
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reflux"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reflux
+
+  # Redis - caching and rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: reflux-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - reflux
+
+  # ClickHouse - time-series traces and metrics
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: reflux-clickhouse
+    ports:
+      - "8123:8123"  # HTTP
+      - "9000:9000"  # Native
+    environment:
+      CLICKHOUSE_USER: reflux
+      CLICKHOUSE_PASSWORD: reflux
+      CLICKHOUSE_DB: reflux
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reflux
+
+  # MinIO - S3-compatible object storage
+  minio:
+    image: minio/minio:latest
+    container_name: reflux-minio
+    ports:
+      - "9001:9001"  # Console UI
+      - "9002:9000"  # API
+    environment:
+      MINIO_ROOT_USER: reflux
+      MINIO_ROOT_PASSWORD: reflux123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - reflux
+
+  # MinIO client for bucket creation
+  minio-init:
+    image: minio/mc:latest
+    container_name: reflux-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set reflux http://minio:9000 reflux reflux123;
+      mc mb --ignore-existing reflux/artifacts;
+      mc mb --ignore-existing reflux/code;
+      mc anonymous set download reflux/artifacts;
+      mc anonymous set download reflux/code;
+      echo 'Buckets created';
+      "
+    networks:
+      - reflux
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  clickhouse_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  reflux:
+    driver: bridge

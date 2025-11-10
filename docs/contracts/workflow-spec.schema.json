@@ -1,0 +1,222 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workflow Specification",
+  "description": "YAML/JSON workflow definition with dynamic graph support",
+  "type": "object",
+  "required": ["name", "steps"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Workflow name"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this workflow does"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "default": "1.0.0"
+    },
+    "triggers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["webhook", "cron", "manual", "event"]
+          },
+          "config": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Workflow input schema"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "node"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+            "description": "Step identifier (unique within workflow)"
+          },
+          "node": {
+            "type": "string",
+            "description": "Node name (e.g., excel.toParquet) or meta-node (meta.parallel, ai.meta)"
+          },
+          "version": {
+            "type": "string",
+            "description": "Pin to specific node version (optional, uses latest if omitted)"
+          },
+          "with": {
+            "type": "object",
+            "description": "Input parameters with template support (e.g., {{input.file_url}})"
+          },
+          "when": {
+            "type": "string",
+            "description": "Conditional execution (e.g., {{steps.validate.output.ok}})"
+          },
+          "retry": {
+            "type": "object",
+            "properties": {
+              "maxAttempts": {
+                "type": "number",
+                "minimum": 1,
+                "default": 3
+              },
+              "backoff": {
+                "type": "array",
+                "items": { "type": "number" }
+              }
+            }
+          },
+          "timeout": {
+            "type": "number",
+            "description": "Override node timeout (seconds)"
+          },
+          "cache": {
+            "type": "boolean",
+            "description": "Enable step-level caching",
+            "default": false
+          }
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Workflow output mapping"
+    },
+    "policies": {
+      "type": "object",
+      "properties": {
+        "maxDurationSec": {
+          "type": "number",
+          "description": "Maximum workflow duration"
+        },
+        "onError": {
+          "type": "string",
+          "enum": ["fail", "continue", "retry", "fallback"],
+          "default": "fail"
+        },
+        "fallbackWorkflow": {
+          "type": "string",
+          "description": "Alternative workflow to run on failure"
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Metadata for reflection and optimization",
+      "properties": {
+        "cost_budget": {
+          "type": "number",
+          "description": "Maximum cost in USD"
+        },
+        "quality_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "name": "xls_qa_agent",
+      "description": "Answer questions about Excel data",
+      "version": "1.0.0",
+      "inputs": {
+        "file_url": "string",
+        "question": "string",
+        "callback": "string"
+      },
+      "steps": [
+        {
+          "id": "inspect",
+          "node": "excel.inspect",
+          "with": {
+            "source_url": "{{input.file_url}}"
+          }
+        },
+        {
+          "id": "find",
+          "node": "excel.find_tables",
+          "with": {
+            "sheets": "{{steps.inspect.output.sheets}}",
+            "query_hint": "{{input.question}}",
+            "top_k": 3
+          }
+        },
+        {
+          "id": "profile",
+          "node": "table.profile",
+          "with": {
+            "tables": "{{steps.find.output.tables}}"
+          }
+        },
+        {
+          "id": "to_parquet",
+          "node": "excel.toParquet",
+          "with": {
+            "source_url": "{{input.file_url}}",
+            "sheet": "{{steps.find.output.tables[0].sheet}}",
+            "range": "{{steps.find.output.tables[0].range}}"
+          },
+          "cache": true
+        },
+        {
+          "id": "plan_sql",
+          "node": "sql.plan",
+          "with": {
+            "question": "{{input.question}}",
+            "schema": "{{steps.to_parquet.output.schema}}"
+          }
+        },
+        {
+          "id": "run_sql",
+          "node": "table.sql",
+          "with": {
+            "parquet_url": "{{steps.to_parquet.output.parquet_url}}",
+            "sql": "{{steps.plan_sql.output.sql}}"
+          }
+        },
+        {
+          "id": "deliver",
+          "node": "webhook.out",
+          "with": {
+            "url": "{{input.callback}}",
+            "body": {
+              "answer": "{{steps.run_sql.output.preview}}",
+              "sql": "{{steps.plan_sql.output.sql}}",
+              "source": {
+                "sheet": "{{steps.find.output.tables[0].sheet}}",
+                "range": "{{steps.find.output.tables[0].range}}"
+              }
+            }
+          }
+        }
+      ],
+      "policies": {
+        "maxDurationSec": 300,
+        "onError": "retry"
+      },
+      "meta": {
+        "cost_budget": 0.5,
+        "quality_threshold": 0.8,
+        "tags": ["xls", "qa", "tabular"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Node Manifest",
+  "description": "Contract for REFLUX node definition with versioning, I/O schema, and execution policies",
+  "type": "object",
+  "required": ["name", "version", "inputs", "outputs", "policies"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z]+\\.[a-zA-Z]+$",
+      "description": "Node identifier in format: category.action (e.g., excel.toParquet, table.sql)",
+      "examples": ["excel.toParquet", "table.sql", "http.request"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (e.g., 1.4.2)"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Human-readable name for UI"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this node does"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["tabular", "http", "transform", "meta", "ai", "storage", "notification", "webhook"],
+      "description": "Node category for UI grouping"
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Input schema (name -> type). Use '?' suffix for optional fields.",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*\\??$": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "json", "file_url", "array", "object"]
+        }
+      },
+      "examples": [
+        {
+          "file_url": "string",
+          "sheet?": "string",
+          "range?": "string"
+        }
+      ]
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Output schema (name -> type)",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "type": "string"
+        }
+      },
+      "examples": [
+        {
+          "parquet_url": "string",
+          "rows": "number",
+          "cols": "number",
+          "schema": "json"
+        }
+      ]
+    },
+    "policies": {
+      "type": "object",
+      "required": ["timeoutSec"],
+      "properties": {
+        "timeoutSec": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Maximum execution time in seconds"
+        },
+        "retries": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": "Retry backoff sequence in seconds (e.g., [1, 3, 10, 30])",
+          "default": [1, 5, 15]
+        },
+        "idempotency": {
+          "type": "string",
+          "enum": ["none", "sha1(inputs)", "custom"],
+          "description": "How to determine if execution can be skipped",
+          "default": "sha1(inputs)"
+        },
+        "cacheKey": {
+          "type": "string",
+          "description": "Template for cache key (e.g., 'file:{{inputs.file_url}}')"
+        },
+        "cacheTTL": {
+          "type": "number",
+          "description": "Cache TTL in seconds",
+          "default": 3600
+        }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Custom metrics this node reports (beyond standard latency_ms, error_class)",
+      "examples": [["rows", "cols", "cost_tokens", "quality_score"]]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags for searchability"
+    },
+    "documentation": {
+      "type": "object",
+      "properties": {
+        "usage": {
+          "type": "string",
+          "description": "Markdown documentation"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "inputs": { "type": "object" },
+              "outputs": { "type": "object" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "name": "excel.toParquet",
+      "version": "1.4.2",
+      "displayName": "Excel to Parquet",
+      "description": "Convert Excel/XLSB to Parquet format with streaming for large files",
+      "category": "tabular",
+      "inputs": {
+        "file_url": "file_url",
+        "sheet?": "string",
+        "range?": "string"
+      },
+      "outputs": {
+        "parquet_url": "file_url",
+        "rows": "number",
+        "cols": "number",
+        "schema": "json"
+      },
+      "policies": {
+        "timeoutSec": 180,
+        "retries": [1, 3, 10, 30],
+        "idempotency": "sha1(inputs)",
+        "cacheKey": "excel:{{inputs.file_url}}:{{inputs.sheet}}",
+        "cacheTTL": 3600
+      },
+      "metrics": ["rows", "cols", "file_size_mb", "conversion_rate_mb_per_sec"],
+      "tags": ["excel", "parquet", "conversion", "tabular"]
+    }
+  ]
+}

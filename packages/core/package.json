@@ -1,0 +1,39 @@
+{
+  "name": "@reflux/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "REFLUX core workflow execution engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "worker": "ts-node src/worker.ts",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "ts-node src/db/migrate.ts",
+    "db:seed": "ts-node src/db/seed.ts"
+  },
+  "dependencies": {
+    "@temporalio/activity": "^1.13.1",
+    "@temporalio/client": "^1.13.1",
+    "@temporalio/worker": "^1.13.1",
+    "@temporalio/workflow": "^1.13.1",
+    "jsonpath-plus": "^10.2.0",
+    "kysely": "^0.27.6",
+    "moleculer": "^0.14.34",
+    "pg": "^8.16.3",
+    "redis": "^4.7.0",
+    "uuid": "^11.0.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/pg": "^8.11.10",
+    "@types/uuid": "^10.0.0",
+    "kysely-codegen": "^0.17.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
