@@ -7,7 +7,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
+[![CI](https://img.shields.io/github/actions/workflow/status/ryskin/reflux/ci.yml?branch=main&label=CI)](https://github.com/ryskin/reflux/actions)
+[![codecov](https://img.shields.io/codecov/c/github/ryskin/reflux)](https://codecov.io/gh/ryskin/reflux)
 [![Status](https://img.shields.io/badge/Status-Alpha-orange.svg)]()
+
+![REFLUX Dashboard](./docs/images/dashboard.png)
+
+*Visual workflow builder with self-improving capabilities*
 
 </div>
 
@@ -73,7 +79,7 @@ After 100 executions, REFLUX knows:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/reflux.git
+git clone https://github.com/ryskin/reflux.git
 cd reflux
 
 # Install dependencies
