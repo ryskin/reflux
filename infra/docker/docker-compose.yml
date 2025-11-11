@@ -1,3 +1,5 @@
+name: reflux
+
 services:
   # Temporal server with PostgreSQL backend
   temporal:

@@ -6,7 +6,13 @@
  */
 import { Service, ServiceBroker, Context } from 'moleculer';
 import axios from 'axios';
-import { VM } from 'vm2';
+import { nodeCache } from './n8n-node-cache';
+
+// Security: Whitelist of allowed n8n packages
+const ALLOWED_N8N_PACKAGES = new Set([
+  'n8n-nodes-base',
+  // Add more when needed: 'n8n-nodes-community', etc.
+]);
 
 // n8n interfaces (simplified)
 export interface INodeExecutionData {
@@ -378,6 +384,24 @@ export function createN8nNodeService(n8nNode: INodeType): any {
  * Load n8n node from package
  */
 export async function loadN8nNode(packageName: string, nodeName: string, version?: number): Promise<INodeType> {
+  // SECURITY: Validate package is whitelisted
+  if (!ALLOWED_N8N_PACKAGES.has(packageName)) {
+    throw new Error(`Package "${packageName}" is not in the allowed list. Only ${Array.from(ALLOWED_N8N_PACKAGES).join(', ')} are permitted.`);
+  }
+
+  // SECURITY: Validate node name (prevent path traversal)
+  if (!/^[A-Za-z0-9]+$/.test(nodeName)) {
+    throw new Error(`Invalid node name: "${nodeName}". Only alphanumeric characters are allowed.`);
+  }
+
+  // PERFORMANCE: Check cache first
+  const cacheKey = `${packageName}:${nodeName}:${version || 'latest'}`;
+  const cached = await nodeCache.get(cacheKey);
+  if (cached) {
+    console.log(`[n8n-adapter] Cache hit for ${cacheKey}`);
+    return cached;
+  }
+
   try {
     // Try to load from dist/nodes/<NodeName>/<NodeName>.node.js
     let nodePath = `${packageName}/dist/nodes/${nodeName}/${nodeName}.node`;
@@ -429,7 +453,13 @@ export async function loadN8nNode(packageName: string, nodeName: string, version
       throw new Error(`Node "${nodeName}" not found or is not a constructor`);
     }
 
-    return new NodeClass();
+    const nodeInstance = new NodeClass();
+
+    // PERFORMANCE: Cache the loaded node
+    nodeCache.set(cacheKey, nodeInstance);
+    console.log(`[n8n-adapter] Cached ${cacheKey}`);
+
+    return nodeInstance;
   } catch (error: any) {
     throw new Error(`Failed to load n8n node "${nodeName}": ${error.message}`);
   }

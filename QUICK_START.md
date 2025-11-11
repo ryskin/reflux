@@ -1,205 +1,92 @@
-# REFLUX - Быстрый старт 🚀
+# 🚀 REFLUX Quick Start - Testing n8n Integration
 
-## Что это?
-
-**REFLUX** — платформа для создания автоматизированных workflows (потоков).
-
-**Flow** = последовательность нод (шагов), которые выполняются автоматически.
-
-```
-Webhook → Transform → Send API
-```
-
----
-
-## Как создать свой первый Flow?
-
-### 🎨 Способ 1: Через UI (самый простой)
-
-1. **Откройте**: http://localhost:3002
-2. **Нажмите**: "Create Flow"
-3. **Заполните форму**:
-   - Name: `my_workflow`
-   - Version: `1.0.0`
-   - Description: `Мой первый flow`
-4. **Готово!** Система создаст простой flow с webhook и transform
-
-### 💻 Способ 2: Через API
+## One-Command Setup
 
 ```bash
-curl -X POST http://localhost:4000/api/flows \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "my_workflow",
-    "version": "1.0.0",
-    "description": "Мой первый flow",
-    "spec": {
-      "nodes": [
-        {
-          "id": "start",
-          "type": "nodes.webhook.trigger",
-          "params": { "method": "POST", "path": "/test" }
-        },
-        {
-          "id": "process",
-          "type": "nodes.transform.execute",
-          "params": {
-            "code": "outputs.result = { message: inputs.body, processed: true }"
-          }
-        }
-      ],
-      "edges": [
-        { "from": "start", "to": "process" }
-      ]
-    },
-    "tags": ["test"]
-  }'
+./start-dev.sh
 ```
 
----
+This will:
+- ✅ Start all Docker services (Temporal, PostgreSQL, Redis, ClickHouse, MinIO)
+- ✅ Wait for services to be healthy
+- ✅ Show status of all services
 
-## Доступные ноды
+## Start Application
 
-### 🌐 Webhook Trigger
-Принимает HTTP запросы
-
-```json
-{
-  "type": "nodes.webhook.trigger",
-  "params": {
-    "method": "POST",
-    "path": "/my-webhook"
-  }
-}
+### Terminal 1 - API Server
+```bash
+cd packages/api
+npm run dev
 ```
 
-### 🔄 HTTP Request
-Отправляет HTTP запросы
+API will be available at: http://localhost:4000
 
-```json
-{
-  "type": "nodes.http.request",
-  "params": {
-    "url": "https://api.example.com/data",
-    "method": "GET"
-  }
-}
+### Terminal 2 - UI
+```bash
+cd packages/ui
+npm run dev
 ```
 
-### ⚙️ Transform
-Выполняет JavaScript
+UI will be available at: http://localhost:5173
 
-```json
-{
-  "type": "nodes.transform.execute",
-  "params": {
-    "code": "outputs.result = inputs.data.map(x => x * 2)"
-  }
-}
+## Test n8n Integration
+
+### Terminal 3 - Run Automated Tests
+```bash
+./test-n8n.sh
 ```
 
----
+This will test:
+- ✅ n8n nodes list endpoint
+- ✅ Node description loading
+- ✅ Caching functionality
+- ✅ Input validation
+- ✅ Multiple node types
 
-## Полезные команды
+## Manual UI Test
+
+1. Open http://localhost:5173
+2. Click **"Workflows"** → **"Create Workflow"**
+3. Click **"Add n8n Node..."** button
+4. Browse 16+ available n8n nodes:
+   - **Core**: HttpRequest, Set, Code, DateTime, Crypto
+   - **Logic**: If, Switch
+   - **Communication**: Slack, Discord, Telegram
+   - **AI**: OpenAI
+   - **Database**: PostgreSQL, MySQL, MongoDB
+   - **Productivity**: Google Sheets, Notion
+
+5. Click any node to add it
+6. Click the node on canvas
+7. See **all properties** load dynamically!
+
+## Services
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| UI | http://localhost:5173 | - |
+| API | http://localhost:4000 | - |
+| Temporal UI | http://localhost:8080 | - |
+| MinIO Console | http://localhost:9001 | reflux / reflux123 |
+| PostgreSQL | localhost:5432 | reflux / reflux |
+| Redis | localhost:6379 | - |
+
+## Stop Services
 
 ```bash
-# Список всех flows
-curl http://localhost:4000/api/flows
+cd infra/docker
+docker-compose down
 
-# Запустить flow
-curl -X POST http://localhost:4000/api/flows/[FLOW_ID]/execute \
-  -H "Content-Type: application/json" \
-  -d '{"inputs": {"data": "test"}}'
-
-# Список запусков
-curl http://localhost:4000/api/runs
-
-# Доступные ноды
-curl http://localhost:4000/api/nodes
-
-# Запустить тестовый flow
-./test-e2e.sh
+# To also remove data volumes:
+docker-compose down -v
 ```
 
----
+## Troubleshooting
 
-## Ссылки
-
-- **UI**: http://localhost:3002
-- **API**: http://localhost:4000
-- **Flows**: http://localhost:3002/flows
-- **Runs**: http://localhost:3002/runs
-- **Nodes**: http://localhost:3002/nodes
+See [N8N_TESTING_GUIDE.md](./N8N_TESTING_GUIDE.md) for detailed troubleshooting.
 
 ---
 
-## Примеры
+**Ready to test!** 🎉
 
-### Пример 1: Простой echo
-
-```bash
-curl -X POST http://localhost:4000/api/flows \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "echo",
-    "version": "1.0.0",
-    "spec": {
-      "nodes": [
-        {
-          "id": "webhook",
-          "type": "nodes.webhook.trigger",
-          "params": { "method": "POST", "path": "/echo" }
-        },
-        {
-          "id": "echo",
-          "type": "nodes.transform.execute",
-          "params": {
-            "code": "outputs.result = { received: inputs.body, time: Date.now() }"
-          }
-        }
-      ],
-      "edges": [{ "from": "webhook", "to": "echo" }]
-    }
-  }'
-```
-
-### Пример 2: API запрос
-
-```bash
-curl -X POST http://localhost:4000/api/flows \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "fetch_user",
-    "version": "1.0.0",
-    "spec": {
-      "nodes": [
-        {
-          "id": "fetch",
-          "type": "nodes.http.request",
-          "params": {
-            "url": "https://jsonplaceholder.typicode.com/users/1",
-            "method": "GET"
-          }
-        },
-        {
-          "id": "transform",
-          "type": "nodes.transform.execute",
-          "params": {
-            "code": "outputs.result = { name: inputs.data.name, email: inputs.data.email }"
-          }
-        }
-      ],
-      "edges": [{ "from": "fetch", "to": "transform" }]
-    }
-  }'
-```
-
----
-
-## Документация
-
-Полный туториал: `/docs/tutorials/CREATE_YOUR_FIRST_FLOW.md`
-
----
-
-**Готово!** Теперь вы знаете как создавать workflows в REFLUX 🎉
+Just run `./start-dev.sh` and follow the terminal output.
