@@ -3,10 +3,28 @@
  */
 
 import { Router } from 'express';
-import { NodeRepository, loadN8nNode } from '@reflux/core';
+import { NodeRepository } from '@reflux/core';
 import { z } from 'zod';
 
 const router = Router();
+
+// Optional n8n adapter - only loaded if installed
+let loadN8nNode: any = null;
+let n8nAdapterAvailable = false;
+
+// Try to load n8n adapter at runtime (optional dependency)
+(async () => {
+  try {
+    // @ts-ignore - Optional peer dependency
+    const adapter = await import('@reflux/adapter-n8n');
+    loadN8nNode = adapter.loadN8nNode;
+    n8nAdapterAvailable = true;
+    console.log('[API] n8n adapter loaded successfully');
+  } catch (err) {
+    console.log('[API] n8n adapter not installed (optional dependency)');
+    console.log('[API] Install with: npm install @reflux/adapter-n8n');
+  }
+})();
 
 // Validation schemas
 const nodeNameSchema = z.string()
@@ -93,6 +111,15 @@ router.get('/', async (req, res) => {
  * IMPORTANT: This must come BEFORE the :name route to avoid matching "n8n" as a node name
  */
 router.get('/n8n/list', async (req, res) => {
+  // Check if n8n adapter is available
+  if (!n8nAdapterAvailable) {
+    return res.status(404).json({
+      error: 'n8n adapter not installed',
+      hint: 'Install with: npm install @reflux/adapter-n8n',
+      note: 'n8n adapter is optional and uses n8n Sustainable Use License'
+    });
+  }
+
   try {
     const fs = require('fs');
     const path = require('path');
@@ -188,6 +215,14 @@ router.get(
   validateParams(z.object({ nodeName: nodeNameSchema })),
   validateQuery(z.object({ version: z.string().regex(/^\d+$/, 'Version must be a number').optional() })),
   async (req, res) => {
+    // Check if n8n adapter is available
+    if (!n8nAdapterAvailable || !loadN8nNode) {
+      return res.status(404).json({
+        error: 'n8n adapter not installed',
+        hint: 'Install with: npm install @reflux/adapter-n8n'
+      });
+    }
+
     try {
       const { nodeName } = req.params;
       const { version } = req.query;

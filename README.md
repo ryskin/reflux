@@ -19,6 +19,14 @@
 
 ---
 
+## ⚖️ License
+
+**REFLUX Core:** MIT License - Free for commercial use
+
+**Optional n8n Adapter:** Uses n8n's Sustainable Use License with commercial restrictions. See [packages/adapter-n8n/LICENSE.md](./packages/adapter-n8n/LICENSE.md) for details.
+
+---
+
 ## 🎯 What is REFLUX?
 
 REFLUX is a workflow automation platform built for **reliability and scalability**. Unlike monolithic tools, REFLUX uses **Moleculer service mesh** to provide enterprise-grade stability.
@@ -130,6 +138,10 @@ cd reflux
 # Install dependencies
 npm install
 
+# Optional: Install n8n adapter for 450+ integrations
+# ⚠️ Note: Uses n8n Sustainable Use License (commercial restrictions)
+npm install @reflux/adapter-n8n
+
 # Start infrastructure services (PostgreSQL, Redis, Temporal, etc.)
 cd infra/docker
 docker-compose up -d
@@ -140,6 +152,14 @@ cd ../..
 # Start development servers
 npm run dev
 ```
+
+**About the n8n adapter:**
+- ✅ **Optional** - REFLUX works without it using native nodes
+- ✅ **450+ integrations** - Access to n8n's node ecosystem
+- ⚠️ **License** - Sustainable Use License restricts commercial use
+- 📖 **Details** - See [packages/adapter-n8n/README.md](./packages/adapter-n8n/README.md)
+
+Without the adapter, you'll use native REFLUX nodes (MIT licensed).
 
 ### Access Points
 
@@ -895,7 +915,41 @@ We follow conventional commits:
 
 ## 📜 License
 
-MIT License - see the LICENSE file for details.
+### REFLUX Core
+
+MIT License - see the [LICENSE](./LICENSE) file for details.
+
+**You can:**
+- ✅ Use commercially
+- ✅ Modify and distribute
+- ✅ Use privately
+- ✅ Sublicense
+
+### Optional n8n Adapter
+
+The `@reflux/adapter-n8n` package uses **n8n's Sustainable Use License** with the following restrictions:
+
+**You can:**
+- ✅ Use for internal business purposes
+- ✅ Use for non-commercial or personal projects
+- ✅ Distribute free of charge for non-commercial purposes
+
+**You cannot:**
+- ❌ Use in commercial products sold to others
+- ❌ Offer as a paid service without n8n's permission
+
+**Full license:** [packages/adapter-n8n/LICENSE.md](./packages/adapter-n8n/LICENSE.md)
+
+**For commercial use of n8n adapter:** Contact license@n8n.io
+
+### Summary
+
+| Component | License | Commercial Use |
+|-----------|---------|----------------|
+| REFLUX Core | MIT | ✅ Allowed |
+| n8n Adapter (optional) | Sustainable Use | ⚠️ Restricted |
+
+**Recommendation:** Use REFLUX Core (MIT) for commercial projects. The n8n adapter is optional and best for personal/internal use.
 
 ## 🙏 Acknowledgments
 

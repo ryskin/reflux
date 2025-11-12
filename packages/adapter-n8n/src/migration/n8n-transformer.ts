@@ -3,7 +3,7 @@
  */
 
 import { N8nWorkflow, N8nNode, N8N_TO_REFLUX_NODE_MAP } from './n8n-types';
-import { WorkflowSpec, StepSpec } from '../types';
+import { WorkflowSpec, StepSpec } from '@reflux/core';
 
 export interface TransformResult {
   success: boolean;

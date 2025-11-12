@@ -6,7 +6,7 @@
  */
 import { Service, ServiceBroker, Context } from 'moleculer';
 import axios from 'axios';
-import { nodeCache } from './n8n-node-cache';
+import { nodeCache } from './cache';
 
 // Security: Whitelist of allowed n8n packages
 const ALLOWED_N8N_PACKAGES = new Set([

@@ -30,7 +30,5 @@
     "npm": ">=10.0.0"
   },
   "dependencies": {
-    "n8n-nodes-base": "^1.117.0",
-    "n8n-workflow": "^1.116.0"
   }
 }
