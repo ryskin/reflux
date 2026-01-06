@@ -9,7 +9,8 @@ import flowsRouter from './routes/flows';
 import runsRouter from './routes/runs';
 import nodesRouter from './routes/nodes';
 import webhooksRouter from './routes/webhooks';
-import { migrateToLatest } from '@reflux/core';
+import adminRouter from './routes/admin';
+import { migrateToLatest, initTracing, getMetrics, httpRequestsTotal, httpRequestDuration } from '@reflux/core';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -19,15 +20,57 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
+// Prometheus metrics middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  // Capture response finish event
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000; // Convert to seconds
+    const route = req.route?.path || req.path;
+    const statusCode = res.statusCode.toString();
+
+    // Record metrics
+    httpRequestsTotal.inc({
+      method: req.method,
+      route,
+      status_code: statusCode,
+    });
+
+    httpRequestDuration.observe(
+      {
+        method: req.method,
+        route,
+        status_code: statusCode,
+      },
+      duration
+    );
+  });
+
+  next();
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (req, res) => {
+  try {
+    const metrics = await getMetrics();
+    res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.send(metrics);
+  } catch (error: any) {
+    res.status(500).send(`Error generating metrics: ${error.message}`);
+  }
 });
 
 // API routes
 app.use('/api/flows', flowsRouter);
 app.use('/api/runs', runsRouter);
 app.use('/api/nodes', nodesRouter);
+app.use('/api/admin', adminRouter);
 
 // Webhook routes (dynamic, matches any active workflow webhook trigger)
 app.use('/webhook', webhooksRouter);
@@ -41,6 +84,15 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // Start server
 async function start() {
   try {
+    // Initialize OpenTelemetry tracing
+    initTracing({
+      enabled: process.env.OTEL_ENABLED !== 'false',
+      serviceName: 'reflux-api',
+      serviceVersion: '0.1.0',
+      otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+      environment: process.env.NODE_ENV || 'development',
+    });
+
     // Run database migrations
     console.log('🔄 Running database migrations...');
     await migrateToLatest();
@@ -55,6 +107,7 @@ async function start() {
       console.log(`  POST   /api/flows/:id/execute - Execute flow`);
       console.log(`  GET    /api/runs - List runs`);
       console.log(`  GET    /api/nodes - List nodes`);
+      console.log(`  GET    /api/admin/retention/* - Retention management`);
       console.log(`  *      /webhook/* - Dynamic webhook triggers`);
       console.log(`\n⏳ Ready for requests...\n`);
     });

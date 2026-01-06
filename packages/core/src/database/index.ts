@@ -15,6 +15,12 @@ export type {
   Node as DBNode,
   NewNode as DBNewNode,
   NodeUpdate as DBNodeUpdate,
+  Artifact,
+  NewArtifact,
+  ArtifactUpdate,
+  CleanupAudit,
+  NewCleanupAudit,
+  CleanupAuditUpdate,
   Database,
 } from './schema';
 
@@ -22,3 +28,5 @@ export * from './db';
 export { FlowRepository } from './repositories/flows';
 export { RunRepository } from './repositories/runs';
 export { NodeRepository } from './repositories/nodes';
+export { ArtifactRepository } from './repositories/artifacts';
+export { CleanupAuditRepository } from './repositories/cleanup-audit';

@@ -7,12 +7,19 @@ import { RunRepository } from '@reflux/core';
 
 const router = Router();
 
+// Max limits to prevent DoS attacks
+const MAX_RUN_LIMIT = 1000;
+const MAX_LOG_LIMIT = 10000;
+
 /**
  * GET /api/runs - List recent runs
  */
 router.get('/', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = Math.min(
+      parseInt(req.query.limit as string) || 50,
+      MAX_RUN_LIMIT
+    );
     const status = req.query.status as any;
 
     const runs = status
@@ -47,7 +54,10 @@ router.get('/:id', async (req, res) => {
  */
 router.get('/flow/:flowId', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = Math.min(
+      parseInt(req.query.limit as string) || 50,
+      MAX_RUN_LIMIT
+    );
     const runs = await RunRepository.listByFlowId(req.params.flowId, limit);
 
     res.json(runs);
@@ -84,6 +94,54 @@ router.put('/:id', async (req, res) => {
     res.json(run);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/runs/:id/logs - Get logs for a run
+ */
+router.get('/:id/logs', async (req, res) => {
+  try {
+    const filters = {
+      stepId: req.query.step as string | undefined,
+      level: req.query.level as any | undefined,
+      limit: Math.min(
+        parseInt(req.query.limit as string) || 1000,
+        MAX_LOG_LIMIT
+      ),
+      offset: parseInt(req.query.offset as string) || 0,
+    };
+
+    const logs = await RunRepository.getLogs(req.params.id, filters);
+    res.json(logs);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/runs/:id/with-logs - Get run with logs
+ */
+router.get('/:id/with-logs', async (req, res) => {
+  try {
+    const filters = {
+      stepId: req.query.step as string | undefined,
+      level: req.query.level as any | undefined,
+      limit: Math.min(
+        parseInt(req.query.limit as string) || 1000,
+        MAX_LOG_LIMIT
+      ),
+    };
+
+    const runWithLogs = await RunRepository.getWithLogs(req.params.id, filters);
+
+    if (!runWithLogs) {
+      return res.status(404).json({ error: 'Run not found' });
+    }
+
+    res.json(runWithLogs);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 

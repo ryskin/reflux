@@ -3,7 +3,7 @@
  */
 
 import { Router } from 'express';
-import { FlowRepository, RunRepository, WorkflowClient } from '@reflux/core';
+import { FlowRepository, RunRepository, WorkflowClient, runsTotal, runsDuration, runsActive } from '@reflux/core';
 
 const router = Router();
 
@@ -70,6 +70,70 @@ router.get('/:id/versions', async (req, res) => {
     res.json(versions);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/flows/:id/versions/:versionId - Get a specific version
+ */
+router.get('/:id/versions/:versionId', async (req, res) => {
+  try {
+    const version = await FlowRepository.getVersionById(req.params.versionId);
+
+    if (!version || version.flow_id !== req.params.id) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    res.json(version);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/flows/:id/versions/:versionId/rollback - Rollback to a specific version
+ */
+router.post('/:id/versions/:versionId/rollback', async (req, res) => {
+  try {
+    const { createdBy } = req.body;
+
+    const flow = await FlowRepository.rollbackToVersion(
+      req.params.id,
+      req.params.versionId,
+      createdBy
+    );
+
+    res.json({
+      message: 'Flow rolled back successfully',
+      flow,
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/flows/:id/versions/compare - Compare two versions
+ */
+router.get('/:id/versions/compare', async (req, res) => {
+  try {
+    const { version1, version2 } = req.query;
+
+    if (!version1 || !version2) {
+      return res.status(400).json({
+        error: 'Missing required query parameters: version1 and version2',
+      });
+    }
+
+    const diff = await FlowRepository.compareVersions(
+      req.params.id,
+      version1 as string,
+      version2 as string
+    );
+
+    res.json(diff);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -187,13 +251,26 @@ router.post('/:id/execute', async (req, res) => {
 
     console.log(`✅ Started workflow: ${flow.name} (temporal: ${temporalWorkflowId}, db: ${run.id})`);
 
+    // Track active workflows
+    runsActive.inc({ flow_id: flow.id });
+
     // Return immediately - don't block on workflow completion!
     res.json(run);
+
+    // Track workflow start time for duration calculation
+    const workflowStartTime = Date.now();
 
     // Update run async in background
     handle.result()
       .then(async (result: unknown) => {
         console.log(`✅ Workflow completed: ${temporalWorkflowId}`);
+
+        // Record workflow completion metrics
+        const durationSeconds = (Date.now() - workflowStartTime) / 1000;
+        runsTotal.inc({ flow_id: flow.id, flow_name: flow.name, status: 'completed' });
+        runsDuration.observe({ flow_id: flow.id, flow_name: flow.name, status: 'completed' }, durationSeconds);
+        runsActive.dec({ flow_id: flow.id });
+
         try {
           await RunRepository.update(run.id, {
             status: 'completed',
@@ -206,6 +283,13 @@ router.post('/:id/execute', async (req, res) => {
       })
       .catch(async (workflowError: any) => {
         console.error(`❌ Workflow failed: ${runId}`, workflowError.message);
+
+        // Record workflow failure metrics
+        const durationSeconds = (Date.now() - workflowStartTime) / 1000;
+        runsTotal.inc({ flow_id: flow.id, flow_name: flow.name, status: 'failed' });
+        runsDuration.observe({ flow_id: flow.id, flow_name: flow.name, status: 'failed' }, durationSeconds);
+        runsActive.dec({ flow_id: flow.id });
+
         try {
           await RunRepository.update(run.id, {
             status: 'failed',

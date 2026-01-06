@@ -5,8 +5,18 @@
 import { Worker, NativeConnection } from '@temporalio/worker';
 import * as activities from './activities';
 import { resolve } from 'path';
+import { initTracing } from './tracing';
 
 async function main() {
+  // Initialize OpenTelemetry tracing
+  initTracing({
+    enabled: process.env.OTEL_ENABLED !== 'false',
+    serviceName: 'reflux-worker',
+    serviceVersion: '0.1.0',
+    otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    environment: process.env.NODE_ENV || 'development',
+  });
+
   console.log('🔌 Connecting to Temporal...');
 
   const connection = await NativeConnection.connect({

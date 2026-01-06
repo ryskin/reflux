@@ -45,11 +45,25 @@ export interface RunsTable {
   outputs: unknown | null; // JSON
   started_at: Generated<Date>;
   completed_at: Date | null;
+  duration_ms: number | null; // Execution duration in milliseconds
   error: string | null;
   temporal_workflow_id: string;
   temporal_run_id: string;
   created_by: string | null;
   metadata: unknown | null; // JSON
+}
+
+/**
+ * Run logs table - stores step-level execution logs
+ */
+export interface RunLogsTable {
+  id: Generated<string>;
+  run_id: string;
+  step_id: string;
+  timestamp: Generated<Date>;
+  level: 'debug' | 'info' | 'warn' | 'error';
+  message: string;
+  data: unknown | null; // JSON - additional log context
 }
 
 /**
@@ -93,14 +107,51 @@ export interface MetricsTable {
 }
 
 /**
+ * Artifacts table - stores metadata for large workflow outputs
+ */
+export interface ArtifactsTable {
+  id: Generated<string>;
+  run_id: string;
+  step_id: string;
+  key: string; // Storage key/path
+  size_bytes: number;
+  content_type: string | null;
+  storage_backend: string; // 'local' | 's3'
+  etag: string | null;
+  created_at: Generated<Date>;
+  expires_at: Date | null;
+}
+
+/**
+ * Cleanup audit table - tracks all cleanup operations
+ */
+export interface CleanupAuditTable {
+  id: Generated<string>;
+  started_at: Generated<Date>;
+  completed_at: Date | null;
+  duration_ms: number | null;
+  success: boolean;
+  dry_run: Generated<boolean>;
+  retention_policy: unknown; // JSON RetentionPolicy
+  preview: unknown; // JSON CleanupPreview
+  deleted: unknown | null; // JSON CleanupPreview
+  errors: string[];
+  triggered_by: string | null;
+  metadata: unknown | null; // JSON
+}
+
+/**
  * Database schema interface
  */
 export interface Database {
   flows: FlowsTable;
   flow_versions: FlowVersionsTable;
   runs: RunsTable;
+  run_logs: RunLogsTable;
   nodes: NodesTable;
   metrics: MetricsTable;
+  artifacts: ArtifactsTable;
+  cleanup_audit: CleanupAuditTable;
 }
 
 /**
@@ -117,6 +168,10 @@ export type Run = Selectable<RunsTable>;
 export type NewRun = Insertable<RunsTable>;
 export type RunUpdate = Updateable<RunsTable>;
 
+export type RunLog = Selectable<RunLogsTable>;
+export type NewRunLog = Insertable<RunLogsTable>;
+export type RunLogUpdate = Updateable<RunLogsTable>;
+
 export type Node = Selectable<NodesTable>;
 export type NewNode = Insertable<NodesTable>;
 export type NodeUpdate = Updateable<NodesTable>;
@@ -124,3 +179,11 @@ export type NodeUpdate = Updateable<NodesTable>;
 export type Metric = Selectable<MetricsTable>;
 export type NewMetric = Insertable<MetricsTable>;
 export type MetricUpdate = Updateable<MetricsTable>;
+
+export type Artifact = Selectable<ArtifactsTable>;
+export type NewArtifact = Insertable<ArtifactsTable>;
+export type ArtifactUpdate = Updateable<ArtifactsTable>;
+
+export type CleanupAudit = Selectable<CleanupAuditTable>;
+export type NewCleanupAudit = Insertable<CleanupAuditTable>;
+export type CleanupAuditUpdate = Updateable<CleanupAuditTable>;

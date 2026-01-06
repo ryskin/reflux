@@ -1,0 +1,42 @@
+# Prometheus configuration for REFLUX monitoring
+
+global:
+  scrape_interval: 15s # Scrape targets every 15 seconds
+  evaluation_interval: 15s # Evaluate rules every 15 seconds
+  external_labels:
+    cluster: 'reflux-dev'
+    environment: 'development'
+
+# Scrape configurations
+scrape_configs:
+  # REFLUX API Server
+  - job_name: 'reflux-api'
+    static_configs:
+      - targets: ['api:4000']
+        labels:
+          service: 'api'
+          component: 'reflux'
+
+  # Temporal metrics (if enabled)
+  - job_name: 'temporal'
+    static_configs:
+      - targets: ['temporal:9090']
+        labels:
+          service: 'temporal'
+          component: 'workflow-engine'
+
+  # PostgreSQL exporter (optional, requires postgres_exporter)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+  #       labels:
+  #         service: 'postgres'
+  #         component: 'database'
+
+  # Redis exporter (optional, requires redis_exporter)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #       labels:
+  #         service: 'redis'
+  #         component: 'cache'

@@ -4,3 +4,4 @@
 
 export * from './execute-node';
 export * from './record-metric';
+export * from './cleanup';
