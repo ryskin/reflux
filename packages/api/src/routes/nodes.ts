@@ -254,6 +254,43 @@ router.get(
 );
 
 /**
+ * GET /api/nodes/schemas - List all node schemas for auto-form generation
+ */
+router.get('/schemas', async (req, res) => {
+  try {
+    const { listNodeSchemas } = await import('@reflux/core/src/activities/moleculer-client');
+    const schemas = await listNodeSchemas();
+    res.json(schemas);
+  } catch (error: any) {
+    console.error('[API] Error listing node schemas:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/nodes/schema/:nodeName - Get schema for a specific node
+ * Used for auto-generating forms in the UI
+ */
+router.get('/schema/:nodeName', async (req, res) => {
+  try {
+    const { getNodeSchema } = await import('@reflux/core/src/activities/moleculer-client');
+    const { nodeName } = req.params;
+    const version = (req.query.version as string) || '1.0.0';
+
+    const schema = await getNodeSchema(nodeName, version);
+
+    if (!schema) {
+      return res.status(404).json({ error: `Schema not found for node: ${nodeName}` });
+    }
+
+    res.json(schema);
+  } catch (error: any) {
+    console.error('[API] Error getting node schema:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/nodes/:name - Get latest version of a node
  */
 router.get('/:name', async (req, res) => {
